@@ -1,0 +1,10 @@
+.env
+venv/
+__pycache__/
+*.xlsx
+*.html
+debug_*.html
+get_token.py
+monitor-cs.py
+monitor-ml.py
+*.pyc
