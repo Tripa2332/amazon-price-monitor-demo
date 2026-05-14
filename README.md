@@ -1,88 +1,141 @@
-# Amazon Price Monitor - Demo de Web Scraping
+# 📡 Amazon Price Monitor
 
-Este repositorio contiene una demo funcional de scraping de Amazon para extraer precios, descuento y enlaces de productos, y guardar los resultados en un archivo Excel.
+Monitor de precios automatizado para Amazon con alertas por Telegram, dashboard web y conversión ARS/USD en tiempo real.
 
-## Qué hace este proyecto
+---
 
-- Lee una lista de productos desde `productos.csv`
-- Realiza búsquedas en Amazon con `requests` + `BeautifulSoup`
-- Usa concurrencia con `concurrent.futures` para procesar varios productos en paralelo
-- Muestra progreso de ejecución por producto y por página
-- Usa reintentos automáticos para manejar `429` y errores de red temporales
-- Registra warnings y errores con logging estructurado
-- Cuenta con type hints y docstrings para mayor calidad de código
-- Extrae título, precio actual, precio original, descuento y enlace del producto
-- Convierte los valores USD a ARS usando el valor del dólar blue
-- Genera un informe en formato Excel con los datos recolectados
+## ✨ Características
 
-## Tecnología utilizada
+- 🔍 Búsqueda en paralelo de múltiples productos simultáneamente
+- 💵 Conversión automática USD → ARS usando dólar blue en tiempo real
+- 🔔 Alertas por Telegram cuando se detectan ofertas con descuento configurable
+- 📊 Dashboard web con gráficos, filtros y análisis por categoría
+- ⚡ Cancelación del monitoreo en tiempo real desde el dashboard
+- 📋 Presets de productos por categoría (tecnología, gaming, hogar, etc.)
+- 🗂️ Configuración guardable en `.env` directamente desde la UI
+- 📈 Progreso en vivo durante la ejecución
+- 📁 Exportación a Excel con todos los datos
 
-- Python 3.8+
-- requests
-- BeautifulSoup
-- pandas
-- python-dotenv
+---
 
-Además se usa `concurrent.futures` para paralelizar la búsqueda y `requests` con reintentos para manejar mejor respuestas 429 y errores temporales.
+## 🚀 Inicio rápido
 
-## Archivos del repositorio
-
-- `monitor_aws.py` — script principal de scraping
-- `productos.csv` — lista de términos a buscar
-- `README.md` — documentación del proyecto
-- `.gitignore` — evita subir claves y archivos generados
-
-## Instalación
-
-1. Crea y activa un entorno virtual (recomendado):
+### 1. Instalar dependencias
 
 ```bash
 python -m venv venv
-source venv/bin/activate   # Linux/macOS
-venv\Scripts\activate    # Windows
+source venv/bin/activate      # Linux/macOS
+venv\Scripts\activate         # Windows
+
+pip install requests pandas python-dotenv beautifulsoup4 streamlit plotly
 ```
 
-2. Instala dependencias:
+### 2. Configurar variables de entorno
 
-```bash
-pip install requests pandas python-dotenv beautifulsoup4
-```
-
-3. Crea un archivo `.env` con tu clave de ScraperAPI:
+Crear un archivo `.env` (o configurar desde el dashboard):
 
 ```env
-SCRAPER_API_KEY=tu_api_key
+SCRAPER_API_KEY=tu_api_key           # scraperapi.com — gratis hasta 1000 req/mes
+TELEGRAM_BOT_TOKEN=tu_bot_token      # opcional — alertas automáticas
+TELEGRAM_CHAT_ID=tu_chat_id          # opcional
+DESCUENTO_MINIMO=20                  # % mínimo para activar alerta
 ```
 
-## Uso
+### 3. Configurar productos
 
-1. Ajusta `productos.csv` con los productos o términos que quieras monitorear.
-2. Ejecuta el script:
+Editar `productos.csv` (o hacerlo desde el dashboard):
 
+```
+producto
+notebook lenovo
+iphone 15
+monitor samsung 27
+```
+
+### 4. Ejecutar
+
+**Dashboard web (recomendado):**
+```bash
+streamlit run dashboard.py
+```
+
+**Modo consola:**
 ```bash
 python monitor_aws.py
 ```
 
-3. Se generará un archivo `amazon_monitor_YYYYMMDD_HHMM.xlsx` con los resultados.
+---
 
-## Resultados esperados
+## 🔔 Configurar alertas por Telegram
 
-El script imprime en consola el avance de la búsqueda y genera un Excel con columnas como:
+1. Buscá **@BotFather** en Telegram → `/newbot` → copiá el token
+2. Buscá **@userinfobot** → mandá cualquier mensaje → copiá tu Chat ID
+3. Pegá ambos en el `.env` o desde el sidebar del dashboard
+4. Configurá `DESCUENTO_MINIMO` según tu criterio
 
-- El código incluye type hints, docstrings y logging, lo que lo hace más profesional para presentarlo como proyecto técnico.
+Las alertas incluyen: nombre, precio actual vs original, % de descuento, precio en ARS y link directo.
 
-- Producto buscado
-- Título
-- Precio oferta (USD)
-- Precio original (USD)
-- Descuento %
-- Precio oferta (ARS)
-- Precio original (ARS)
-- Dólar blue
-- Link
-- Fecha
+---
 
-## Autor
+## 🌐 Dashboard Web
 
-Este proyecto fue desarrollado como demo de scraping web. Para consultas o colaboraciones, contactame.
+`dashboard.py` incluye:
 
+- Sidebar con configuración completa (API keys, filtros, parámetros)
+- Carga automática de variables desde `.env` con indicador visual
+- Botón de **cancelar monitoreo** en tiempo real
+- **Barra de progreso** con productos completados / total
+- **Log en vivo** durante la ejecución
+- **Presets** de productos por categoría (laptops, gaming, hogar, etc.)
+- 4 tabs: Resultados · Mejores ofertas · Gráficos · Análisis
+- 4 gráficos Plotly: precio por categoría, distribución descuentos, scatter precio/descuento, top ahorro
+- Boxplot de distribución de precios por categoría
+- Búsqueda en tiempo real dentro de los resultados
+- Descarga del Excel generado
+
+---
+
+## 🏗️ Arquitectura
+
+```
+monitor_aws.py          ← Scraper Amazon (ScraperAPI + BeautifulSoup)
+telegram_notifier.py    ← Módulo de alertas por Telegram
+dashboard.py            ← Interfaz web con Streamlit
+productos.csv           ← Lista de productos a monitorear
+.env                    ← Claves de API (no se sube al repo)
+```
+
+---
+
+## ⚙️ Tecnología
+
+- **Python 3.8+**
+- `requests` + `BeautifulSoup4` — scraping Amazon
+- `pandas` — procesamiento y exportación Excel
+- `streamlit` — dashboard web
+- `plotly` — gráficos interactivos
+- `concurrent.futures` — paralelismo
+- `python-dotenv` — gestión de claves
+- [dolarapi.com](https://dolarapi.com) — cotización dólar blue en tiempo real
+- [scraperapi.com](https://scraperapi.com) — proxy para Amazon (gratis hasta 1000 req/mes)
+
+---
+
+## 📁 Archivos
+
+| Archivo | Descripción |
+|---|---|
+| `monitor_aws.py` | Scraper principal Amazon |
+| `telegram_notifier.py` | Módulo de alertas Telegram |
+| `dashboard.py` | Dashboard web Streamlit |
+| `productos.csv` | Lista de productos a monitorear |
+| `.env` | Variables de entorno (no incluido en repo) |
+| `.gitignore` | Excluye claves y archivos generados |
+
+---
+
+## 👤 Autor
+
+Desarrollado por **Rafael Orozco** — automatizaciones y scraping con Python.
+
+📧 joaquin23.or@gmail.com

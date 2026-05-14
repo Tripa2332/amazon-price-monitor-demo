@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import time
+from telegram_notifier import alertar_ofertas   
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,8 +32,8 @@ HEADERS = {
 }
 
 RETRY_STRATEGY = Retry(
-    total=5,
-    backoff_factor=1,
+    total=3,
+    backoff_factor=2,          # espera 2s, 4s, 8s entre reintentos
     status_forcelist=[429, 500, 502, 503, 504],
     allowed_methods=frozenset(["GET"]),
 )
@@ -50,7 +51,7 @@ logger.info(f"📋 {len(PRODUCTOS)} productos cargados desde productos.csv")
 
 def obtener_dolar() -> float:
     """Obtener el valor del dólar blue desde la API externa."""
-    response = SESSION.get("https://dolarapi.com/v1/dolares/blue", timeout=15)
+    response = SESSION.get("https://dolarapi.com/v1/dolares/blue", timeout=60)
     venta = response.json().get("venta")
     return float(venta) if venta else 1200.0
 
@@ -65,17 +66,25 @@ def buscar_precios(query: str, dolar: float, max_pages: int = 3) -> List[Dict[st
             "api_key": API_KEY,
             "url": f"https://www.amazon.com/s?k={query.replace(' ', '+')}&page={page}",
         }
-        resp = SESSION.get(url, params=params, timeout=15)
+
+        # ← CAMBIO 1: timeout 60s + captura de errores de red
+        try:
+            resp = SESSION.get(url, params=params, timeout=60)
+            resp.raise_for_status()
+        except requests.exceptions.Timeout:
+            logger.warning("    Página %s: timeout — saltando", page)
+            continue
+        except requests.exceptions.RequestException as e:
+            logger.warning("    Página %s: error de red — %s", page, e)
+            continue
+
         soup = BeautifulSoup(resp.text, "html.parser")
 
         print(f"\r    Página {page}/{max_pages}", end="", flush=True)
 
+        # ← ya no necesitás el chequeo de status_code != 200 porque raise_for_status() lo cubre
         if resp.status_code == 404:
-            logger.warning("    Página %s: 404 no encontrada (posible página eliminada o bloqueo)", page)
-            continue
-
-        if resp.status_code != 200:
-            logger.warning("    Página %s: status %s", page, resp.status_code)
+            logger.warning("    Página %s: 404 no encontrada", page)
             continue
 
         if "captcha" in resp.text.lower() or "automated access" in resp.text.lower():
@@ -192,13 +201,18 @@ def main() -> None:
 
     if todos:
         df = pd.DataFrame(todos)
-        nombre = f"amazon_monitor_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        etiqueta = os.getenv("NOMBRE_REPORTE", "").strip()
+        sufijo   = f"_{etiqueta}" if etiqueta else ""
+        nombre   = f"amazon_monitor_{datetime.now().strftime('%Y%m%d_%H%M')}{sufijo}.xlsx"
         df.to_excel(nombre, index=False)
         elapsed = time.time() - start_time
         logger.info("\n✓ %s — %s productos", nombre, len(todos))
         logger.info("Tiempo total aproximado: %.2f segundos", elapsed)
     else:
         logger.info("Sin resultados")
+        
+        alertas = alertar_ofertas(todos)
+        logger.info("🔔 Alertas enviadas: %s", alertas)
 
 
 if __name__ == "__main__":
